@@ -527,9 +527,12 @@ contract ERC20 is Context, IERC20 {
     string private _name;
     string private _symbol;
 
-    uint    constant DividendCycle  = 1;
-    uint    public   startDeflationHeight; 
+    uint    constant DividendCycle  = 4;
+    uint    constant ts = 4000000;// balance - (0.0004%)/s
+
+    uint    public   startDeflationTime; 
     uint    public   totalDividendCycle; 
+
 
     mapping (address => bool) public noDeflation;  
     mapping (address => uint) public Basics;
@@ -660,24 +663,24 @@ contract ERC20 is Context, IERC20 {
 
 
     function DeflationCount(address account) view public returns(uint) {
-        return block.number - startDeflationHeight  - Basics[account];
+        return block.timestamp - startDeflationTime  - Basics[account];
     }
 
-    function blockNumber() view public returns(uint) {
-        return block.number;
+    function blockTimestamp() view public returns(uint) {
+        return block.timestamp;
     }
 
     function isDividend(address account)  private returns(uint) {
         uint balance = _balances[account];
-        if (noDeflation[account] ||  startDeflationHeight < DividendCycle){
+        if (noDeflation[account] ||  startDeflationTime < DividendCycle){
             return _balances[account];
         }  
-        if (block.number < startDeflationHeight + DividendCycle){
+        if (block.timestamp < startDeflationTime + DividendCycle){
             return balance;
         }
 
         uint balance1 = GetBalance(account);
-        Basics[account] = block.number - startDeflationHeight;
+        Basics[account] = block.timestamp - startDeflationTime;
 
         totalDividendCycle += (balance - balance1);
         return  balance1;
@@ -686,7 +689,7 @@ contract ERC20 is Context, IERC20 {
     function GetBalance(address account) private view returns(uint){
         uint balance = _balances[account];
 
-        if (noDeflation[account] || startDeflationHeight < DividendCycle){
+        if (noDeflation[account] || startDeflationTime < DividendCycle){
             return balance;
         }
 
@@ -694,25 +697,26 @@ contract ERC20 is Context, IERC20 {
             return balance;
         }
 
-        if (block.number < startDeflationHeight + DividendCycle){
+        if (block.timestamp < startDeflationTime + DividendCycle){
             return balance;
         }
         
-        if (block.number - startDeflationHeight < Basics[account]){
+        if (block.timestamp - startDeflationTime < Basics[account]){
             return balance;
         }
-        uint DeflationTmp = block.number - startDeflationHeight  - Basics[account] ;
+        // 1s 0.0004% = 
+        uint DeflationTmp = block.timestamp - startDeflationTime  - Basics[account] ;
         
-        if (DeflationTmp > 1000000 || balance < 1000000){
+        if (DeflationTmp > ts || balance < ts){
             return 0;
         }
         
 
-        if (balance < balance * DeflationTmp / 1000000){
+        if (balance < balance * DeflationTmp / ts){
             return 0;
         }
 
-        return balance - balance * DeflationTmp / 1000000;
+        return balance - balance * DeflationTmp / ts;
     }
     
 
@@ -755,8 +759,8 @@ contract BREADS is ERC20, Ownable {
         noDeflation[addr] = bl;
     }
 
-    function SetStartDeflationHeight(uint _height) public onlyOwner {
-        startDeflationHeight = _height;
+    function SetStartDeflationTime(uint _height) public onlyOwner {
+        startDeflationTime = _height;
     }
 
     
