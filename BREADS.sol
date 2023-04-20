@@ -727,12 +727,8 @@ contract ERC20 is Context, IERC20 {
 
 contract BREADS is ERC20, Ownable {
    
-    IJoeRouter02 public joeswap = IJoeRouter02(0x7BFd7192E76D950832c77BB412aaE841049D8D9B);
 
-    IJoeFactory private factory =  IJoeFactory(joeswap.factory());
-
-    address   public LPtoken ;
-    address   public ETH = joeswap.WAVAX();
+    mapping(address=>bool)    public Pairs ;
 
 
     uint public startswap;
@@ -748,14 +744,16 @@ contract BREADS is ERC20, Ownable {
     // BREADS
     constructor() ERC20("BREADS token", "BREADS") {
         super._mint( owner(), 100000000 * 10 ** 18);
-        LPtoken = address(factory.createPair(ETH,address(this)));
-        noDeflation[LPtoken] = true;
         noDeflation[address(this)] = true;
 
     }
 
 
 
+    function SetPairs(address addr,bool bl) public onlyOwner {
+        Pairs[addr] = bl;
+        noDeflation[addr] = bl;
+    }
 
     function SetStartDeflationHeight(uint _height) public onlyOwner {
         startDeflationHeight = _height;
@@ -800,7 +798,7 @@ contract BREADS is ERC20, Ownable {
             super._transfer(sender,recipient,amount);
             return true;
         }
-        if (sender != LPtoken && recipient != LPtoken){
+        if (Pairs[sender] && Pairs[recipient]){
             super._transfer(sender,recipient,amount);
             return true;
         }
@@ -809,7 +807,7 @@ contract BREADS is ERC20, Ownable {
         require(startswap > 0,"We can't trade now");
 
 
-        if (recipient == LPtoken || sender == LPtoken){
+        if (Pairs[recipient] || Pairs[sender]){
             _tax(sender,recipient,amount);
         }
         
